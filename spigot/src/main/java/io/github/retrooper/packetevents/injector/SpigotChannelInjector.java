@@ -116,8 +116,7 @@ public class SpigotChannelInjector implements ChannelInjector {
                 }
 
                 for (Object networkManager : networkManagers) {
-                    ReflectionObject networkManagerWrapper = new ReflectionObject(networkManager);
-                    Channel channel = networkManagerWrapper.readObject(0, Channel.class);
+                    Channel channel = readChannel(networkManager);
                     if (channel == null) {
                         continue;
                     }
@@ -180,8 +179,7 @@ public class SpigotChannelInjector implements ChannelInjector {
         //Make sure we handled all connected clients.
         synchronized (networkManagers) {
             for (Object networkManager : networkManagers) {
-                ReflectionObject networkManagerWrapper = new ReflectionObject(networkManager);
-                Channel channel = networkManagerWrapper.readObject(0, Channel.class);
+                Channel channel = readChannel(networkManager);
                 // This can somehow be null on spigot 1.8?
                 if (channel != null && channel.isOpen()) {
                     if (channel.localAddress().equals(serverChannel.localAddress())) {
@@ -189,6 +187,21 @@ public class SpigotChannelInjector implements ChannelInjector {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Reads the netty channel out of a network manager entry, returning null when the entry
+     * is not a network manager at all. Other plugins can add synthetic connections to this
+     * list, and one of those must not abort injection for every real connection.
+     */
+    private @Nullable Channel readChannel(Object networkManager) {
+        try {
+            return new ReflectionObject(networkManager).readObject(0, Channel.class);
+        } catch (Exception e) {
+            PacketEvents.getAPI().getLogManager().debug("Skipping network manager entry of foreign type "
+                    + networkManager.getClass().getName() + ", no channel field found: " + e.getMessage());
+            return null;
         }
     }
 

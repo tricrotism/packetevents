@@ -49,8 +49,14 @@ dependencies {
     testImplementation(libs.netty)
     testImplementation(libs.classgraph)
     testImplementation(project(":spigot"))
+    testImplementation(project(":velocity"))
+    testImplementation(libs.velocity)
+    testImplementation(project(":bungeecord"))
+    testImplementation(libs.bungeecord)
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.11.2")
+    testImplementation(testlibs.jmh.core)
+    testAnnotationProcessor(testlibs.jmh.generator)
 }
 
 mappingCompression {
@@ -102,6 +108,16 @@ tasks {
         testLogging {
             exceptionFormat = TestExceptionFormat.FULL
         }
+    }
+
+    register<JavaExec>("jmh") {
+        group = "verification"
+        description = "Run the JMH benchmarks in src/test/java. Pass args with -PjmhArgs=\"...\""
+        dependsOn(testClasses)
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass = "org.openjdk.jmh.Main"
+        args = ((project.findProperty("jmhArgs") as String?) ?: "")
+            .split(" ").filter { it.isNotEmpty() }
     }
 
     shadowJar {

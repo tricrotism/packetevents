@@ -35,7 +35,7 @@ public interface BaseChunk {
     int getBlockId(int x, int y, int z);
 
     default WrappedBlockState get(ClientVersion version, int x, int y, int z) {
-        return get(version, x, y, z, true);
+        return get(version, x, y, z, false);
     }
 
     default WrappedBlockState get(ClientVersion version, int x, int y, int z, boolean clone) {
@@ -43,7 +43,7 @@ public interface BaseChunk {
     }
 
     default WrappedBlockState get(int x, int y, int z) {
-        return get(x, y, z, true);
+        return get(x, y, z, false);
     }
 
     default WrappedBlockState get(int x, int y, int z, boolean clone) {

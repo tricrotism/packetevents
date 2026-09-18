@@ -69,7 +69,6 @@ public class Column {
         this.hasHeightmaps = false;
         this.heightmapsNbt = new NBTCompound();
         this.hasBiomeData = false;
-        this.biomeDataInts = new int[1024];
     }
 
     public Column(int x, int z, boolean fullChunk, BaseChunk[] chunks, TileEntity[] tileEntities, NBTCompound heightmapsNbt) {
@@ -81,7 +80,6 @@ public class Column {
         this.hasHeightmaps = true;
         this.heightmapsNbt = heightmapsNbt;
         this.hasBiomeData = false;
-        this.biomeDataInts = new int[1024];
     }
 
     /**
@@ -97,7 +95,6 @@ public class Column {
         this.heightmapsNbt = null;
         this.heightmaps = heightmaps;
         this.hasBiomeData = false;
-        this.biomeDataInts = new int[1024];
     }
 
     public Column(int x, int z, boolean fullChunk, BaseChunk[] chunks, TileEntity[] tileEntities, NBTCompound heightmapsNbt, int[] biomeDataInts) {

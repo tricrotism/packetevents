@@ -65,13 +65,8 @@ public class PacketEventsEncoder extends MessageToByteEncoder<ByteBuf> {
     protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) throws Exception {
         if (!msg.isReadable()) return;
 
-        ByteBuf transformed = ctx.alloc().buffer().writeBytes(msg);
-        try {
-            read(ctx, transformed);
-            out.writeBytes(transformed);
-        } finally {
-            transformed.release();
-        }
+        out.writeBytes(msg);
+        read(ctx, out);
     }
 
     @Override

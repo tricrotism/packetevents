@@ -4,6 +4,7 @@ mockbukkit = "4.98.0"
 paper = "1.21.10-R0.1-SNAPSHOT"
 slf4j = "2.0.16"
 junit = "5.11.2"
+jmh = "1.37"
 
 [libraries]
 adventure-api = { group = "net.kyori", name = "adventure-api", version.ref = "adventure" }
@@ -17,6 +18,8 @@ slf4j = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 junit-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit" }
 junit-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
 junit-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
+jmh-core = { group = "org.openjdk.jmh", name = "jmh-core", version.ref = "jmh" }
+jmh-generator = { group = "org.openjdk.jmh", name = "jmh-generator-annprocess", version.ref = "jmh" }
 
 [bundles]
 adventure = ["adventure-api", "adventure-nbt"]

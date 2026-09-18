@@ -27,8 +27,6 @@ import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.world.BlockFace;
 import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 
-import java.util.Objects;
-
 /**
  * 3D double Vector.
  * This vector can represent coordinates, angles, or anything you want.
@@ -178,7 +176,7 @@ public class Vector3d {
 
     @Override
     public int hashCode() {
-        return Objects.hash(x, y, z);
+        return 31 * (31 * (31 + Double.hashCode(x)) + Double.hashCode(y)) + Double.hashCode(z);
     }
 
     public Vector3d add(double x, double y, double z) {

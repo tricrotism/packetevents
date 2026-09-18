@@ -44,7 +44,7 @@ public class PatchableComponentMap implements IComponentMap {
     private final IRegistryHolder registries;
 
     public PatchableComponentMap(StaticComponentMap base) {
-        this(base.delegate, new HashMap<>(), base.registries);
+        this(base, new HashMap<>(), base.registries);
     }
 
     @Deprecated
@@ -56,7 +56,7 @@ public class PatchableComponentMap implements IComponentMap {
             StaticComponentMap base,
             Map<ComponentType<?>, Optional<?>> patches
     ) {
-        this(base.delegate, patches, base.registries);
+        this(base, patches, base.registries);
     }
 
     @Deprecated
@@ -68,7 +68,7 @@ public class PatchableComponentMap implements IComponentMap {
     }
 
     public PatchableComponentMap(StaticComponentMap base, IRegistryHolder registries) {
-        this(base.delegate, new HashMap<>(), registries);
+        this(base, new HashMap<>(), registries);
     }
 
     public PatchableComponentMap(Map<ComponentType<?>, ?> base, IRegistryHolder registries) {
@@ -80,7 +80,9 @@ public class PatchableComponentMap implements IComponentMap {
             Map<ComponentType<?>, Optional<?>> patches,
             IRegistryHolder registries
     ) {
-        this(base.delegate, patches, registries);
+        this.base = base.delegate;
+        this.patches = patches;
+        this.registries = registries;
     }
 
     public PatchableComponentMap(

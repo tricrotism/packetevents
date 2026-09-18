@@ -41,7 +41,6 @@ import io.netty.util.ReferenceCountUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayDeque;
@@ -67,7 +66,6 @@ public class PacketEventsEncoder extends ChannelOutboundHandlerAdapter {
     public User user;
     public Player player;
     private boolean handledCompression = COMPRESSION_ENABLED_EVENT != null;
-    private ChannelPromise promise;
 
     private final Queue<QueuedMessage> queuedMessages = new ArrayDeque<>();
     private boolean hold = false;
@@ -80,7 +78,6 @@ public class PacketEventsEncoder extends ChannelOutboundHandlerAdapter {
         user = ((PacketEventsEncoder) encoder).user;
         player = ((PacketEventsEncoder) encoder).player;
         handledCompression = ((PacketEventsEncoder) encoder).handledCompression;
-        promise = ((PacketEventsEncoder) encoder).promise;
     }
 
     public void setHold(Channel ch, boolean hold) throws Exception {
@@ -98,18 +95,6 @@ public class PacketEventsEncoder extends ChannelOutboundHandlerAdapter {
         }
     }
 
-    private @Nullable PacketSendEvent handleClientBoundPacket(Channel channel, User user, Object player, ByteBuf buffer, ChannelPromise promise) throws Exception {
-        PacketSendEvent packetSendEvent = PacketEventsImplHelper.handleClientBoundPacket(channel, user, player, buffer, true);
-        if (packetSendEvent != null && packetSendEvent.hasTasksAfterSend()) {
-            promise.addListener((p) -> {
-                for (Runnable task : packetSendEvent.getTasksAfterSend()) {
-                    task.run();
-                }
-            });
-        }
-        return packetSendEvent;
-    }
-
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         // if we are told to hold all messages, add them to the queue
@@ -118,26 +103,31 @@ public class PacketEventsEncoder extends ChannelOutboundHandlerAdapter {
             return;
         }
 
-        // We must restore the old promise (in case we are stacking promises such as sending packets on send event)
-        // If the old promise was successful, set it to null to avoid memory leaks.
-        ChannelPromise oldPromise = this.promise != null && !this.promise.isSuccess() ? this.promise : null;
-        if (NETTY_4_1_0) {
-            // "unvoid" will just make sure we can actually add listeners to this promise...
-            // since 1.21.6, mojang will give us void promises when they don't care about the result
-            promise = promise.unvoid();
-        }
-        promise.addListener(p -> this.promise = oldPromise);
-        this.promise = promise;
-
         if (msg instanceof ByteBuf) {
             boolean needsRecompression = !this.handledCompression && this.handleCompression(ctx, (ByteBuf) msg);
-            this.handleClientBoundPacket(ctx.channel(), this.user, this.player, (ByteBuf) msg, this.promise);
 
-            // check if the packet got cancelled
-            if (!((ByteBuf) msg).isReadable()) {
-                ReferenceCountUtil.release(msg);
-                promise.trySuccess(); // TODO how to properly handle this?
-                return; // abort handling
+            if (PacketEvents.getAPI().getEventManager().hasListeners()) {
+                final PacketSendEvent packetSendEvent = PacketEventsImplHelper.handleClientBoundPacket(
+                        ctx.channel(), this.user, this.player, msg, true);
+
+                if (!((ByteBuf) msg).isReadable()) {
+                    ReferenceCountUtil.release(msg);
+                    promise.trySuccess();
+                    return; // abort handling
+                }
+
+                if (packetSendEvent != null && packetSendEvent.hasTasksAfterSend()) {
+                    if (NETTY_4_1_0) {
+                        // "unvoid" will just make sure we can actually add listeners to this promise...
+                        // since 1.21.6, mojang will give us void promises when they don't care about the result
+                        promise = promise.unvoid();
+                    }
+                    promise.addListener(p -> {
+                        for (Runnable task : packetSendEvent.getTasksAfterSend()) {
+                            task.run();
+                        }
+                    });
+                }
             }
 
             if (needsRecompression) {

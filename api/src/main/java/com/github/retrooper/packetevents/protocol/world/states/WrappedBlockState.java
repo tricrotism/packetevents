@@ -53,6 +53,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static com.github.retrooper.packetevents.util.adventure.AdventureIndexUtil.indexValueOrThrow;
 
@@ -111,6 +112,10 @@ public class WrappedBlockState {
             new EnumMap<>(StateValue.class), 0, AIR_MAPPING_INDEX);
     private static final Map<String, WrappedBlockState>[] BY_STRING = new Map[HIGHEST_MAPPING_INDEX + 1];
     private static final Map<Integer, WrappedBlockState>[] BY_ID = new Map[HIGHEST_MAPPING_INDEX + 1];
+    // read path lookup, avoids boxing the global id; entries are shared and must not be mutated.
+    // holds the tables through an atomic array so readers on other threads see fully built contents
+    private static final AtomicReferenceArray<WrappedBlockState[]> BY_ID_ARRAY =
+            new AtomicReferenceArray<>(HIGHEST_MAPPING_INDEX + 1);
     private static final Map<WrappedBlockState, String>[] INTO_STRING = new Map[HIGHEST_MAPPING_INDEX + 1];
     private static final Map<WrappedBlockState, Integer>[] INTO_ID = new Map[HIGHEST_MAPPING_INDEX + 1];
     private static final Map<StateType, WrappedBlockState>[] DEFAULT_STATES = new Map[HIGHEST_MAPPING_INDEX + 1];
@@ -139,6 +144,7 @@ public class WrappedBlockState {
     StateType type;
     Map<StateValue, Object> data = new HashMap<>(0);
     boolean hasClonedData = false;
+    boolean canonical = false;
     byte mappingsIndex;
 
     @Deprecated
@@ -220,6 +226,22 @@ public class WrappedBlockState {
         return cache;
     }
 
+    private static WrappedBlockState[] buildIdArray(Map<Integer, WrappedBlockState> states) {
+        int maxId = 0;
+        for (int id : states.keySet()) {
+            if (id > maxId) {
+                maxId = id;
+            }
+        }
+        WrappedBlockState[] array = new WrappedBlockState[maxId + 1];
+        for (Map.Entry<Integer, WrappedBlockState> entry : states.entrySet()) {
+            WrappedBlockState state = entry.getValue();
+            state.canonical = true;
+            array[entry.getKey()] = state;
+        }
+        return array;
+    }
+
     public static WrappedBlockState decode(NBT nbt, ClientVersion version) {
         if (nbt instanceof NBTString) {
             StateType type = StateTypes.getByName(((NBTString) nbt).getValue());
@@ -244,10 +266,9 @@ public class WrappedBlockState {
                         Number num = ((NBTNumber) entry.getValue()).getAsNumber();
                         value = stateValue.parse(num.toString());
                     } else {
-                        value = stateValue.parse((((NBTString) entry.getValue()).getValue()));
+                        value = stateValue.parse(((NBTString) entry.getValue()).getValue().toUpperCase(Locale.ROOT));
                     }
-                    // safe to modify, gets cloned (if not air)
-                    state.getInternalData().put(stateValue, value);
+                    state.setData(stateValue, value);
                 }
             }
         }
@@ -304,7 +325,15 @@ public class WrappedBlockState {
     public static WrappedBlockState getByGlobalId(ClientVersion version, int globalID, boolean clone) {
         if (globalID == 0) return AIR; // Hardcode for performance
         byte mappingsIndex = loadMappings(version);
-        final WrappedBlockState state = BY_ID[mappingsIndex].getOrDefault(globalID, AIR);
+        final WrappedBlockState[] states = BY_ID_ARRAY.get(mappingsIndex);
+        final WrappedBlockState state;
+        if (states == null) {
+            state = BY_ID[mappingsIndex].getOrDefault(globalID, AIR);
+        } else if (globalID > 0 && globalID < states.length && states[globalID] != null) {
+            state = states[globalID];
+        } else {
+            state = AIR;
+        }
         return clone ? state.clone() : state;
     }
 
@@ -429,6 +458,7 @@ public class WrappedBlockState {
                 }
             }
 
+            BY_ID_ARRAY.set(LEGACY_MAPPING_INDEX, buildIdArray(stateByIdMap));
             BY_ID[LEGACY_MAPPING_INDEX] = stateByIdMap;
             INTO_ID[LEGACY_MAPPING_INDEX] = stateToIdMap;
             BY_STRING[LEGACY_MAPPING_INDEX] = stateByStringMap;
@@ -531,6 +561,7 @@ public class WrappedBlockState {
                 }
             }
 
+            BY_ID_ARRAY.set(mappingIndex, buildIdArray(stateByIdMap));
             BY_ID[mappingIndex] = stateByIdMap;
             INTO_ID[mappingIndex] = stateToIdMap;
             BY_STRING[mappingIndex] = stateByStringMap;
@@ -1587,6 +1618,11 @@ public class WrappedBlockState {
      * Cloning on every wrapped block state is too expensive.
      */
     private void checkIfCloneNeeded() {
+        if (canonical) {
+            throw new IllegalStateException("Cannot modify the shared block state " + type.getName()
+                    + ", call clone() on it first or request a cloned state"
+                    + " (BaseChunk#get(x, y, z, true) / WrappedBlockState#getByGlobalId(version, id, true))");
+        }
         if (!hasClonedData) {
             data = new HashMap<>(data);
             hasClonedData = true;

@@ -255,6 +255,10 @@ public class SpigotPacketEventsBuilder {
                     //Map player instances to the already registered channels (likely a reload)
                     for (Player player : Bukkit.getOnlinePlayers()) {
                         User user = PacketEvents.getAPI().getPlayerManager().getUser(player);
+                        if (user == null) {
+                            getLogManager().debug("Skipping player mapping for " + player.getName() + ", channel was not injected");
+                            continue;
+                        }
                         SpigotChannelInjector injector = (SpigotChannelInjector) PacketEvents.getAPI().getInjector();
                         injector.updatePlayer(user, player);
                     }
@@ -305,9 +309,17 @@ public class SpigotPacketEventsBuilder {
             @Override
             public void terminate() {
                 if (initialized) {
-                    super.terminate();
+                    try {
+                        super.terminate();
+                    } catch (Throwable throwable) {
+                        getLogManager().warn("Failed to terminate cleanly, detaching handlers anyway", throwable);
+                    }
                     for (User user : this.protocolManager.getUsers()) {
-                        ServerConnectionInitializer.destroyHandlers(user.getChannel());
+                        try {
+                            ServerConnectionInitializer.destroyHandlers(user.getChannel());
+                        } catch (Throwable throwable) {
+                            getLogManager().warn("Failed to detach handlers from a channel", throwable);
+                        }
                     }
                     initialized = false;
                     terminated = true;

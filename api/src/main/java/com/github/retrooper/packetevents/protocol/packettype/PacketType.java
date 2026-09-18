@@ -367,7 +367,6 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 
 public final class PacketType {
@@ -828,7 +827,9 @@ public final class PacketType {
             ;
 
             private static int INDEX = 0;
-            private static final Map<Byte, Map<Integer, PacketTypeCommon>> PACKET_TYPE_ID_MAP = new HashMap<>();
+            // indexed by [version index][packet id], read per packet so it must not box or hash
+            private static final PacketTypeCommon[][] PACKET_TYPE_ID_MAP =
+                    new PacketTypeCommon[SERVERBOUND_CONFIG_VERSION_MAPPER.size()][];
             private final int[] ids;
             private final Class<? extends PacketWrapper<?>> wrapper;
 
@@ -854,13 +855,14 @@ public final class PacketType {
 
             private static void loadPacketIds(Enum<?>[] enumConstants) {
                 int index = INDEX;
+                PacketTypeCommon[] packetIdMap = new PacketTypeCommon[enumConstants.length];
                 for (Enum<?> constant : enumConstants) {
                     int id = constant.ordinal();
                     Configuration.Client value = Configuration.Client.valueOf(constant.name());
                     value.ids[index] = id;
-                    Map<Integer, PacketTypeCommon> packetIdMap = PACKET_TYPE_ID_MAP.computeIfAbsent((byte) index, k -> new HashMap<>());
-                    packetIdMap.put(id, value);
+                    packetIdMap[id] = value;
                 }
+                PACKET_TYPE_ID_MAP[index] = packetIdMap;
                 INDEX++;
             }
 
@@ -872,8 +874,8 @@ public final class PacketType {
                 PacketType.prepare();
 
                 int index = SERVERBOUND_CONFIG_VERSION_MAPPER.getIndex(version);
-                Map<Integer, PacketTypeCommon> map = PACKET_TYPE_ID_MAP.get((byte) index);
-                return map.get(packetId);
+                PacketTypeCommon[] map = PACKET_TYPE_ID_MAP[index];
+                return map != null && packetId >= 0 && packetId < map.length ? map[packetId] : null;
             }
 
             @Deprecated
@@ -958,7 +960,9 @@ public final class PacketType {
             ;
 
             private static int INDEX = 0;
-            private static final Map<Byte, Map<Integer, PacketTypeCommon>> PACKET_TYPE_ID_MAP = new HashMap<>();
+            // indexed by [version index][packet id], read per packet so it must not box or hash
+            private static final PacketTypeCommon[][] PACKET_TYPE_ID_MAP =
+                    new PacketTypeCommon[CLIENTBOUND_CONFIG_VERSION_MAPPER.size()][];
             private final int[] ids;
             private final Class<? extends PacketWrapper<?>> wrapper;
 
@@ -986,13 +990,14 @@ public final class PacketType {
 
             private static void loadPacketIds(Enum<?>[] enumConstants) {
                 int index = INDEX;
+                PacketTypeCommon[] packetIdMap = new PacketTypeCommon[enumConstants.length];
                 for (Enum<?> constant : enumConstants) {
                     int id = constant.ordinal();
                     Configuration.Server value = Configuration.Server.valueOf(constant.name());
                     value.ids[index] = id;
-                    Map<Integer, PacketTypeCommon> packetIdMap = PACKET_TYPE_ID_MAP.computeIfAbsent((byte) index, k -> new HashMap<>());
-                    packetIdMap.put(id, value);
+                    packetIdMap[id] = value;
                 }
+                PACKET_TYPE_ID_MAP[index] = packetIdMap;
                 INDEX++;
             }
 
@@ -1004,8 +1009,8 @@ public final class PacketType {
                 PacketType.prepare();
 
                 int index = CLIENTBOUND_CONFIG_VERSION_MAPPER.getIndex(version);
-                Map<Integer, PacketTypeCommon> map = PACKET_TYPE_ID_MAP.get((byte) index);
-                return map.get(packetId);
+                PacketTypeCommon[] map = PACKET_TYPE_ID_MAP[index];
+                return map != null && packetId >= 0 && packetId < map.length ? map[packetId] : null;
             }
 
             @Deprecated
@@ -1205,7 +1210,9 @@ public final class PacketType {
             ;
 
             private static int INDEX = 0;
-            private static final Map<Byte, Map<Integer, PacketTypeCommon>> PACKET_TYPE_ID_MAP = new HashMap<>();
+            // indexed by [version index][packet id], read per packet so it must not box or hash
+            private static final PacketTypeCommon[][] PACKET_TYPE_ID_MAP =
+                    new PacketTypeCommon[SERVERBOUND_PLAY_VERSION_MAPPER.size()][];
             private final int[] ids;
             private final Class<? extends PacketWrapper<?>> wrapper;
 
@@ -1225,20 +1232,21 @@ public final class PacketType {
                 PacketType.prepare();
 
                 int index = SERVERBOUND_PLAY_VERSION_MAPPER.getIndex(version);
-                Map<Integer, PacketTypeCommon> packetIdMap = PACKET_TYPE_ID_MAP.computeIfAbsent((byte) index, k -> new HashMap<>());
-                return packetIdMap.get(packetId);
+                PacketTypeCommon[] packetIdMap = PACKET_TYPE_ID_MAP[index];
+                return packetIdMap != null && packetId >= 0 && packetId < packetIdMap.length
+                        ? packetIdMap[packetId] : null;
             }
 
             private static void loadPacketIds(Enum<?>[] enumConstants) {
                 int index = INDEX;
+                PacketTypeCommon[] packetIdMap = new PacketTypeCommon[enumConstants.length];
                 for (Enum<?> constant : enumConstants) {
                     int id = constant.ordinal();
                     Client value = Client.valueOf(constant.name());
                     value.ids[index] = id;
-                    Map<Integer, PacketTypeCommon> packetIdMap = PACKET_TYPE_ID_MAP.computeIfAbsent((byte) index,
-                            k -> new HashMap<>());
-                    packetIdMap.put(id, value);
+                    packetIdMap[id] = value;
                 }
+                PACKET_TYPE_ID_MAP[index] = packetIdMap;
                 INDEX++;
             }
 
@@ -1616,7 +1624,9 @@ public final class PacketType {
             ;
 
             private static int INDEX = 0;
-            private static final Map<Byte, Map<Integer, PacketTypeCommon>> PACKET_TYPE_ID_MAP = new HashMap<>();
+            // indexed by [version index][packet id], read per packet so it must not box or hash
+            private static final PacketTypeCommon[][] PACKET_TYPE_ID_MAP =
+                    new PacketTypeCommon[CLIENTBOUND_PLAY_VERSION_MAPPER.size()][];
             private final int[] ids;
             private final Class<? extends PacketWrapper<?>> wrapper;
 
@@ -1643,8 +1653,8 @@ public final class PacketType {
                 PacketType.prepare();
 
                 int index = CLIENTBOUND_PLAY_VERSION_MAPPER.getIndex(version);
-                Map<Integer, PacketTypeCommon> map = PACKET_TYPE_ID_MAP.get((byte) index);
-                return map.get(packetId);
+                PacketTypeCommon[] map = PACKET_TYPE_ID_MAP[index];
+                return map != null && packetId >= 0 && packetId < map.length ? map[packetId] : null;
             }
 
             @Override
@@ -1654,13 +1664,14 @@ public final class PacketType {
 
             private static void loadPacketIds(Enum<?>[] enumConstants) {
                 int index = INDEX;
+                PacketTypeCommon[] packetIdMap = new PacketTypeCommon[enumConstants.length];
                 for (Enum<?> constant : enumConstants) {
                     int id = constant.ordinal();
                     Server value = Server.valueOf(constant.name());
                     value.ids[index] = id;
-                    Map<Integer, PacketTypeCommon> packetIdMap = PACKET_TYPE_ID_MAP.computeIfAbsent((byte) index, k -> new HashMap<>());
-                    packetIdMap.put(id, value);
+                    packetIdMap[id] = value;
                 }
+                PACKET_TYPE_ID_MAP[index] = packetIdMap;
                 INDEX++;
             }
 

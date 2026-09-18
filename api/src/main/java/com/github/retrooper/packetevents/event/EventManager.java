@@ -54,6 +54,12 @@ public class EventManager {
     //Updated as a whole on writes, no index modifications are allowed
     private volatile PacketListenerCommon[] listeners = new PacketListenerCommon[0];
 
+    /**
+     * Whether any listener is registered, letting callers skip building an event nothing will receive.
+     */
+    public boolean hasListeners() {
+        return this.listeners.length != 0;
+    }
 
     /**
      * Call the PacketEvent.
